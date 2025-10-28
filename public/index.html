@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>МОЄ КІНО — персональна база фільмів</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+:root{
+  --bg:#0f1115; --card:#161a22; --muted:#9aa4b2; --text:#e6e9ef;
+  --brand:#f6c177; --accent:#7aa2f7; --border:rgba(255,255,255,.08);
+  --radius:12px; --btn-h:40px; --btn-gap:8px;
+  --btn-bg:var(--card); --btn-bdr:var(--border);
+  --btn-hover:rgba(122,162,247,.18);
+  --danger:rgba(255,110,110,.22);
+  --danger-b:rgba(255,110,110,.38);
+  --heart:#ff5c7a;
+}
+
+*{box-sizing:border-box}
+html,body{
+  height:100%;min-height:100vh;margin:0;padding:0;
+  background:linear-gradient(180deg,#0e1014,#121521);
+  background-attachment:fixed;
+  font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--text);
+}
+
+/* ===== ШАПКА ===== */
+header{
+  position:sticky;top:0;z-index:10;
+  backdrop-filter:blur(8px);
+  background:linear-gradient(180deg,rgba(20,22,28,.9),rgba(20,22,28,.65));
+  border-bottom:1px solid var(--border);
+}
+.nav{max-width:1200px;margin:auto;padding:12px 16px;display:flex;gap:12px;align-items:center}
+.brand{font-weight:800;font-size:18px;padding:8px 12px;border-radius:12px;background:linear-gradient(90deg,var(--brand),#ffd39f);color:#1b1b1b}
+.subtitle{color:#000;font-size:12px;margin-left:6px}
+
+.search{flex:1;display:flex;gap:8px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.search input{flex:1;background:transparent;border:0;color:var(--text)}
+
+/* ===== ЄДИНИЙ СТИЛЬ КНОПОК ===== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  height:var(--btn-h);padding:0 14px;border-radius:var(--radius);
+  border:1px solid var(--btn-bdr);background:var(--btn-bg);color:var(--text);
+  font-weight:600;line-height:1;transition:border-color .15s,box-shadow .15s,background .15s,transform .05s;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.03);user-select:none;
+}
+.btn:hover{border-color:rgba(122,162,247,.45);background:var(--btn-hover)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{
+  background:linear-gradient(90deg,var(--accent),#9fc3ff);
+  color:#0c1222;border:0;box-shadow:0 6px 10px rgba(122,162,247,.15)
+}
+.btn.primary:hover{filter:brightness(.98)}
+.btn[data-edt],.btn[data-del]{width:var(--btn-h);padding:0}
+.btn[data-del]{border-color:var(--danger-b)}
+.btn[data-del]:hover{background:var(--danger)}
+.actions,.movie>div:last-child{display:flex;gap:var(--btn-gap);align-items:center}
+.heart{
+  width:var(--btn-h);height:var(--btn-h);display:grid;place-items:center;
+  padding:0;border-radius:var(--radius);border:1px solid var(--btn-bdr);
+  background:var(--btn-bg);color:var(--text);
+  transition:background .15s,border-color .15s,transform .05s;
+}
+.heart:hover{background:rgba(255,96,125,.12);border-color:rgba(255,96,125,.35)}
+.heart:active{transform:translateY(1px)}
+.heart.fav{
+  color:var(--heart);border-color:rgba(255,96,125,.45);
+  box-shadow:inset 0 0 0 1px rgba(255,96,125,.25);
+  background:rgba(255,96,125,.1);
+}
+
+/* ===== КОНТЕЙНЕР ===== */
+.container{max-width:1200px;margin:20px auto;padding:0 16px}
+.summary{color:var(--muted);margin:8px 0 16px}
+
+/* ===== ДВІ ВЕРХНІ КОЛОНКИ ===== */
+.cols{
+  display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;
+}
+@media(max-width:900px){.cols{grid-template-columns:1fr}}
+.cols>section{
+  display:flex;flex-direction:column;
+  height:70vh;min-height:520px;
+}
+h2{margin:0 0 8px}
+.sub{color:var(--muted);font-size:13px;margin-bottom:10px}
+.list{
+  flex:1;overflow:auto;padding-right:6px;
+  border:1px solid var(--border);border-radius:12px;
+  background:rgba(255,255,255,.02);
+}
+
+/* ===== КАРТКИ ===== */
+.movie{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:start;padding:12px;border-bottom:1px solid var(--border)}
+.movie:last-child{border-bottom:none}
+.movie.watched{box-shadow:0 0 0 1px rgba(246,193,119,.25) inset}
+.poster{width:62px;aspect-ratio:2/3;border-radius:8px;object-fit:cover;background:#0c0f16;border:1px solid rgba(255,255,255,.12)}
+.title{font-weight:700}
+.meta{font-size:12px;color:var(--muted)}
+.stars{font-size:16px;letter-spacing:1px;cursor:pointer}
+.chip{display:inline-flex;gap:6px;align-items:center;padding:4px 8px;border-radius:999px;font-size:12px;background:rgba(122,162,247,.15);border:1px solid rgba(122,162,247,.35);margin-top:6px}
+.empty{color:var(--muted);border:1px dashed var(--border);border-radius:12px;padding:14px;text-align:center;margin:10px}
+
+/* ===== УЛЮБЛЕНІ ФІЛЬМИ ===== */
+.recent{margin-top:28px}
+details{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+summary{cursor:pointer;font-weight:600}
+
+/* ===== МОДАЛКИ І ТОСТ ===== */
+.backdrop{position:fixed;inset:0;display:none;place-items:center;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);z-index:50}
+.backdrop.show{display:grid}
+.modal{width:min(560px,92vw);background:#151922;border:1px solid var(--border);border-radius:16px;padding:16px}
+.grid{display:grid;gap:10px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+input,textarea{width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:rgba(255,255,255,.02);color:var(--text)}
+label{font-size:13px;color:var(--muted)}
+.section-h3{margin:18px 0 8px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1a2230;border:1px solid var(--border);padding:10px 14px;border-radius:10px;display:none}
+.toast.show{display:block}
+</style>
+</head>
+<body>
+<header>
+  <div class="nav">
+    <div class="brand">МОЄ КІНО <span class="subtitle">персональна база фільмів</span></div>
+    <div class="search"><span>🔎</span><input id="q" placeholder="Пошук у назві/жанрі/році..." /></div>
+    <button class="btn primary" id="addBtn">+ Додати</button>
+  </div>
+</header>
+
+<main class="container">
+  <div class="summary" id="summary">🎞 У планах: 0 | ✅ Переглянуто: 0</div>
+  <div class="cols">
+    <section>
+      <h2>🎬 Хочу переглянути</h2>
+      <div class="sub">Фільми, які плануєш подивитись</div>
+      <div id="todo" class="list"></div>
+    </section>
+    <section>
+      <h2>✅ Переглянуто</h2>
+      <div class="sub">Фільми, які ти вже подивився</div>
+      <div id="done" class="list"></div>
+    </section>
+  </div>
+
+  <section class="recent">
+    <details id="favBox" open>
+      <summary>🌟 Улюблені фільми</summary>
+      <div id="favs" class="list" style="margin-top:10px; max-height:40vh;"></div>
+    </details>
+  </section>
+
+  <section>
+    <h3 class="section-h3" id="tmdbTitle" style="display:none">🔎 Знайдено у TMDB</h3>
+    <div id="tmdbResults" class="list" style="display:none"></div>
+  </section>
+</main>
+
+<div class="backdrop" id="modal">
+  <div class="modal">
+    <h3 id="mTitle">Додати фільм</h3>
+    <div class="grid">
+      <div class="grid-2">
+        <div><label>Назва</label><input id="fTitle" /></div>
+        <div><label>Рік</label><input id="fYear" type="number" min="1888" max="2100" /></div>
+      </div>
+      <div class="grid-2">
+        <div><label>Жанр</label><input id="fGenre" placeholder="Фантастика, Драма..." /></div>
+        <div><label>Оцінка (0–5)</label><input id="fRating" type="number" min="0" max="5" value="0" /></div>
+      </div>
+      <div class="grid-2">
+        <div><label>Poster URL (опціонально)</label><input id="fPoster" placeholder="https://..." /></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:20px">
+          <input id="fWatched" type="checkbox" /><label for="fWatched">Переглянуто</label>
+        </div>
+      </div>
+      <div><label>Коментар</label><textarea id="fComment" placeholder="Враження..."></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" id="cancel">Скасувати</button>
+        <button class="btn primary" id="save">Зберегти</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="backdrop" id="mini">
+  <div class="modal" style="width:min(420px,92vw)">
+    <h3>Позначити як переглянуто</h3>
+    <div class="grid">
+      <div><label>Оцінка (0–5)</label><input id="mwRating" type="number" min="0" max="5" value="5"/></div>
+      <div><label>Коментар (опційно)</label><textarea id="mwComment" placeholder="Коротко про враження..."></textarea></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="btn" id="mwCancel">Скасувати</button>
+        <button class="btn primary" id="mwOk">Готово</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">Збережено</div>
+
+<script>
+const API = '/api/movies';
+const $ = s=>document.querySelector(s);
+const todo = $('#todo'), done = $('#done'), favs = $('#favs');
+let editing = null;
+let markTarget = null;
+const placeholder = 'https://placehold.co/200x300?text=%F0%9F%8E%AC';
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1400); }
+function starString(n){ return '★★★★★'.slice(0,n) + '☆☆☆☆☆'.slice(0,5-n); }
+async function fetchJSON(url,{method='GET',body}={}) {
+  const r = await fetch(url, {method, headers: body? {'Content-Type':'application/json'}:undefined, body});
+  if (r.status===204) return null;
+  return r.json();
+}
+
+function openModal(m=null){
+  editing = m;
+  $('#mTitle').textContent = m ? 'Редагувати фільм' : 'Додати фільм';
+  $('#fTitle').value   = m?.title   ?? '';
+  $('#fYear').value    = m?.year    ?? '';
+  $('#fGenre').value   = m?.genre   ?? '';
+  $('#fRating').value  = m?.rating  ?? 0;
+  $('#fPoster').value  = m?.poster_url ?? '';
+  $('#fComment').value = m?.comment ?? '';
+  $('#fWatched').checked = !!m?.watched;
+  $('#modal').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(){ $('#modal').classList.remove('show'); document.body.style.overflow = ''; }
+
+function openMini(movie){
+  markTarget = movie;
+  $('#mwRating').value = movie?.rating ?? 5;
+  $('#mwComment').value = movie?.comment ?? '';
+  $('#mini').classList.add('show'); document.body.style.overflow='hidden';
+}
+function closeMini(){ $('#mini').classList.remove('show'); document.body.style.overflow=''; markTarget=null; }
+
+$('#addBtn').onclick = ()=>openModal();
+$('#cancel').onclick = closeModal;
+$('#q').oninput = ()=>render();
+$('#mwCancel').onclick = closeMini;
+$('#mwOk').onclick = async ()=>{
+  const r = Number($('#mwRating').value||0);
+  const c = $('#mwComment').value.trim();
+  if (!markTarget) return closeMini();
+  await fetchJSON(`${API}/${markTarget.id}`,{
+    method:'PUT',
+    body: JSON.stringify({ watched:true, rating: Math.max(0,Math.min(5,Math.round(r))), comment:c })
+  });
+  closeMini(); toast('Позначено як переглянуто'); render(); loadFavs();
+};
+
+$('#save').onclick = async ()=>{
+  const body = {
+    title: $('#fTitle').value.trim(),
+    year: $('#fYear').value ? Number($('#fYear').value) : null,
+    genre: $('#fGenre').value.trim(),
+    rating: Number($('#fRating').value)||0,
+    comment: $('#fComment').value.trim(),
+    watched: $('#fWatched').checked,
+    poster_url: $('#fPoster').value.trim() || null
+  };
+  if (editing) await fetchJSON(`${API}/${editing.id}`, { method:'PUT', body: JSON.stringify(body) });
+  else await fetchJSON(API, { method:'POST', body: JSON.stringify(body) });
+  closeModal(); toast('Збережено'); render(); loadFavs();
+};
+
+function heart(isFav){ return isFav ? '♥' : '♡'; }
+
+function drawList(items, target){
+  target.innerHTML = '';
+  if (!items.length){ target.innerHTML = '<div class="empty">Нічого не знайдено</div>'; return; }
+  items.forEach(m=>{
+    const el = document.createElement('article'); el.className='movie'+(m.watched?' watched':'');
+    const poster = m.poster_url || placeholder;
+    el.innerHTML = `
+      <img class="poster" src="${poster}" alt="poster">
+      <div>
+        <div class="title">${m.title}</div>
+        <div class="meta">🎥 ${[m.genre||'Без жанру', m.year||'—'].filter(Boolean).join(' • ')}</div>
+        <div class="meta">${m.comment ? ('Коментар: ' + m.comment) : ''}</div>
+        ${m.genre ? '<div class="chip">'+m.genre+'</div>' : ''}
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="stars" title="Оцінити">${starString(m.rating||0)}</div>
+        <button class="btn" data-toggle>${m.watched ? '↩︎ В план' : '✔ Переглянуто'}</button>
+        <button class="btn" data-edt>✎</button>
+        <button class="btn" data-del>🗑</button>
+        <button class="heart ${m.favorite?'fav':''}" data-fav>${heart(m.favorite)}</button>
+      </div>`;
+    // delete
+    el.querySelector('[data-del]').onclick = async()=>{
+      if (confirm('Видалити?')){ await fetchJSON(`${API}/${m.id}`,{method:'DELETE'}); render(); loadFavs(); }
+    };
+    // edit
+    el.querySelector('[data-edt]').onclick = ()=> openModal(m);
+    // watched toggle
+    el.querySelector('[data-toggle]').onclick = async()=>{
+      if (!m.watched) { openMini(m); }
+      else {
+        await fetchJSON(`${API}/${m.id}`,{
+          method:'PUT', body: JSON.stringify({ watched:false })
+        });
+        toast('Повернено у план'); render(); loadFavs();
+      }
+    };
+    // rate
+    el.querySelector('.stars').onclick = async()=>{
+      const v = Number(prompt('Оцінка 0–5', m.rating||0));
+      if(Number.isFinite(v) && v>=0 && v<=5){
+        await fetchJSON(`${API}/${m.id}`,{ method:'PUT', body: JSON.stringify({ rating: Math.round(v) }) });
+        render();
+      }
+    };
+    // favorite
+    el.querySelector('[data-fav]').onclick = async ()=>{
+      await fetchJSON(`${API}/${m.id}/favorite`, {
+        method:'PUT',
+        body: JSON.stringify({ favorite: !m.favorite })
+      });
+      render(); loadFavs();
+    };
+    target.appendChild(el);
+  });
+}
+
+async function refreshSummary(){
+  const all = await fetchJSON(API); // Завантажуємо ВСІ фільми для підрахунку
+  const plans = all.filter(m=>!m.watched).length;
+  const seen = all.filter(m=>m.watched).length;
+  $('#summary').textContent = `🎞 У планах: ${plans} | ✅ Переглянуто: ${seen}`;
+}
+
+const tmdbBox = document.getElementById('tmdbResults');
+const tmdbTitle = document.getElementById('tmdbTitle');
+
+function drawTmdb(results){
+  if (!results.length){ tmdbBox.style.display='none'; tmdbTitle.style.display='none'; tmdbBox.innerHTML=''; return; }
+  tmdbTitle.style.display = '';
+  tmdbBox.style.display = '';
+  tmdbBox.innerHTML = '';
+  results.forEach(m=>{
+    const el = document.createElement('article'); el.className='movie';
+    const poster = m.poster_url || 'https://placehold.co/200x300?text=TMDB';
+    el.innerHTML = `
+      <img class="poster" src="${poster}" alt="">
+      <div>
+        <div class="title">${m.title}</div>
+        <div class="meta">${m.year || '—'}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn" data-plan>+ У план</button>
+        <button class="btn primary" data-fav>★ До улюблених</button>
+      </div>`;
+    el.querySelector('[data-plan]').onclick = async ()=>{
+      await fetch('/api/tmdb/add', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ tmdb_id: m.tmdb_id, watched: false, favorite: false })
+      });
+      toast('Додано в план'); render(); loadFavs();
+    };
+    el.querySelector('[data-fav]').onclick = async ()=>{
+      await fetch('/api/tmdb/add', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ tmdb_id: m.tmdb_id, watched: false, favorite: true })
+      });
+      toast('Додано до улюблених'); render(); loadFavs();
+    };
+    tmdbBox.appendChild(el);
+  });
+}
+
+async function searchTmdb(q){
+  if (!q || q.length < 2) { tmdbBox.style.display='none'; tmdbTitle.style.display='none'; tmdbBox.innerHTML=''; return; }
+  const res = await fetch(`/api/tmdb/search?q=${encodeURIComponent(q)}`).then(r=>r.json());
+  tmdbTitle.style.display=''; tmdbBox.style.display='';
+  drawTmdb(res);
+}
+
+// *** ВИПРАВЛЕНА ФУНКЦІЯ RENDER ***
+async function render(){
+  const q = $('#q').value.trim();
+  // 1. Завантажуємо ВСІ фільми користувача, незалежно від пошукового запиту
+  const allItems = await fetchJSON(API);
+
+  // 2. Фільтруємо лише для відображення у колонках "Хочу переглянути" та "Переглянуто"
+  drawList(allItems.filter(m=>!m.watched), todo);
+  drawList(allItems.filter(m=>m.watched),  done);
+
+  // 3. Оновлюємо підсумок (refreshSummary тепер робить це самостійно)
+  refreshSummary();
+  
+  // 4. Пошук у TMDB (цей пошук має бути лише для додавання, тому query використовуємо тут)
+  searchTmdb(q);
+}
+// *** КІНЕЦЬ ВИПРАВЛЕНОЇ ФУНКЦІЇ RENDER ***
+
+async function loadFavs(){
+  const items = await fetchJSON(`${API}/favorites`);
+  drawList(items, favs);
+}
+
+render(); loadFavs();
+</script>
+</body>
+</html>

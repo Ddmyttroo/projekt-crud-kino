@@ -1,0 +1,20 @@
+{
+  "name": "projekt-crud-kino-final",
+  "version": "0.1.0",
+  "description": "Personal movie tracker with TMDB integration (v11)",
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "migrate": "node db.js migrate",
+    "seed": "node db.js seed",
+    "posters:fetch": "node tools/fetch-posters.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "better-sqlite3": "^9.6.0",
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.23.8",
+    "cors": "^2.8.5"
+  }
+}
