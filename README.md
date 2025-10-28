@@ -1,60 +1,55 @@
-# МОЄ КІНО — CRUD (Part A, final)
+Projekt CRUD Kino
 
-Проста веб-апка для персональної бази фільмів: план перегляду, переглянуті, улюблені, пошук, додавання з TMDB (з постером).
+To aplikacja do zarządzania bazą danych filmów. Umożliwia wykonywanie operacji CRUD (tworzenie, odczyt, aktualizacja, usuwanie) na danych filmowych.
 
-## Вимоги
-- Node.js 20+
-- SQLite (вбудовано через better-sqlite3)
-- Інтернет для TMDB (опційно, якщо хочеш пошук/постери)
+Funkcje
 
-## Налаштування
-У корені лежить твій `.env`. Приклад вмісту:
-```
-TMDB_API_KEY=ВАШ_КЛЮЧ
-PORT=8080
-```
+Operacje CRUD na filmach.
 
-## Запуск локально
-```bash
-npm install
-npm run migrate
-# (опціонально) npm run seed
-npm run dev
-```
-Відкрий: http://localhost:8080
+Node.js jako backend.
 
-## Ендпойнти API
-- `GET /api/movies` — список (параметри: `q`, `watched=true|false`)
-- `GET /api/movies/:id` — деталі
-- `POST /api/movies` — створити
-- `PUT /api/movies/:id` — оновити
-- `DELETE /api/movies/:id` — видалити
+SQLite jako baza danych.
 
-### Тіло `POST/PUT` (приклад)
-```json
-{
-  "title": "Inception",
-  "year": 2010,
-  "genre": "Sci-Fi/Thriller",
-  "rating": 5,
-  "comment": "Круто",
-  "watched": true,
-  "favorite": 1,
-  "poster_url": "https://image.tmdb.org/t/p/w500/....jpg",
-  "tmdb_id": 27205
-}
-```
+Prosty interfejs do zarządzania danymi.
 
-## TMDB інтеграція
-- `GET /api/tmdb/search?q=...` — пошук у TMDB (назва/рік/постер)
-- `POST /api/tmdb/add` — додати за `tmdb_id` (тіло: `{ "tmdb_id": 123, "watched": false }`)
+Uruchamianie aplikacji
 
----
+Uruchom aplikację za pomocą pliku RunAll.bat:
+Wystarczy uruchomić plik RunAll.bat, aby uruchomić aplikację. Plik ten automatycznie:
 
-Це готова збірка **Part A**.
+Instaluje wszystkie zależności.
 
+Uruchamia serwer.
 
-## 🚀 Швидкий запуск (Windows)
-1. Запусти `run_final.bat`
-2. Далі все зробиться автоматично (npm install → migrate → dev)
-3. Відкриється браузер з [http://localhost:8080](http://localhost:8080)
+Dostępność aplikacji:
+Po uruchomieniu aplikacji będzie ona dostępna pod adresem http://localhost:3000.
+
+Struktura projektu
+
+server.js: Główny plik serwera, który zarządza aplikacją.
+
+db.js: Plik konfiguracyjny bazy danych SQLite.
+
+migrations/: Folder zawierający migracje bazy danych.
+
+public/: Folder ze statycznymi plikami (CSS, obrazy).
+
+tools/: Narzędzia pomocnicze.
+
+data/: Folder z plikami bazy danych.
+
+Ważne pliki
+
+.env: Plik konfiguracyjny dla środowiska, zawierający ustawienia bazy danych.
+
+package.json: Definicja zależności oraz skryptów do uruchamiania projektu (ale nie musisz go używać, ponieważ plik RunAll.bat wykonuje wszystkie potrzebne kroki).
+
+RunAll.bat: Plik wsadowy do uruchamiania aplikacji i jej serwera oraz instalowania zależności.
+
+README.md: Dokumentacja projektu.
+
+Uwagi
+
+W przypadku problemów z uruchomieniem aplikacji sprawdź, czy masz odpowiednie środowisko Node.js.
+
+Jeśli chcesz pracować nad projektem, upewnij się, że masz odpowiednie środowisko Node.js 20.17.
