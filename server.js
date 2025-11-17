@@ -26,7 +26,9 @@ const MovieSchema = z.object({
   watched: z.boolean().optional().default(false),
   favorite: z.boolean().optional().default(false),
   poster_url: z.string().trim().url().optional().nullable(),
-  tmdb_id: z.number().int().optional().nullable()
+  tmdb_id: z.number().int().optional().nullable(),
+  director: z.string().trim().max(200).optional().default(''), // Part B: Added director field
+  release_date: z.string().nullable().optional() // Part B: Added release_date field
 });
 
 const db = getDb();
@@ -34,14 +36,17 @@ const rowToMovie = r => ({
   ...r,
   watched: !!r.watched,
   favorite: !!r.favorite,
-  rating: Number(r.rating ?? 0)
+  rating: Number(r.rating ?? 0),
+  director: r.director, // Part B: Added director field to the row mapping
+  release_date: r.release_date // Part B: Added release_date field to the row mapping
 });
 
 // LIST
 app.get('/api/movies', (req, res) => {
   const { q, watched, favorite } = req.query;
   const parts = []; const params = [];
-  if (q){ parts.push('(title LIKE ? OR genre LIKE ? OR year LIKE ?)'); params.push(`%${q}%`,`%${q}%`,`%${q}%`); }
+  if (q){ parts.push('(title LIKE ? OR genre LIKE ? OR year LIKE ? OR director LIKE ?)'); // Part B: Added director filter
+    params.push(`%${q}%`,`%${q}%`,`%${q}%`, `%${q}%`); }
   if (watched === 'true') parts.push('watched = 1');
   if (watched === 'false') parts.push('watched = 0');
   if (favorite === 'true') parts.push('favorite = 1');
@@ -83,13 +88,13 @@ app.get('/api/movies/:id', (req, res) => {
 app.post('/api/movies', (req, res) => {
   const parsed = MovieSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ errors: parsed.error.flatten() });
-  const { title, year=null, genre, rating, comment, watched, favorite, poster_url, tmdb_id=null } = parsed.data;
+  const { title, year=null, genre, rating, comment, watched, favorite, poster_url, tmdb_id=null, director, release_date } = parsed.data; // Part B: Added director and release_date to body
   const poster = poster_url && String(poster_url).trim() ? String(poster_url).trim() : null;
   const now = new Date().toISOString();
   const info = db.prepare(`
-    INSERT INTO movies (tmdb_id, title, year, genre, rating, comment, watched, favorite, created_at, updated_at, last_watched_at, poster_url)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-  `).run(tmdb_id, title, year, genre, rating, comment, watched?1:0, favorite?1:0, now, now, watched? now : null, poster);
+    INSERT INTO movies (tmdb_id, title, year, genre, rating, comment, watched, favorite, created_at, updated_at, last_watched_at, poster_url, director, release_date)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `).run(tmdb_id, title, year, genre, rating, comment, watched?1:0, favorite?1:0, now, now, watched? now : null, poster, director, release_date); // Part B: Added director and release_date to INSERT query
   const created = db.prepare('SELECT * FROM movies WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(rowToMovie(created));
 });
@@ -119,7 +124,7 @@ app.put('/api/movies/:id', (req, res) => {
 
   db.prepare(`
     UPDATE movies
-    SET tmdb_id=?, title=?, year=?, genre=?, rating=?, comment=?, watched=?, favorite=?, updated_at=?, last_watched_at=?, poster_url=?
+    SET tmdb_id=?, title=?, year=?, genre=?, rating=?, comment=?, watched=?, favorite=?, updated_at=?, last_watched_at=?, poster_url=?, director=?, release_date=?
     WHERE id=?
   `).run(
     next.tmdb_id ?? prev.tmdb_id,
@@ -133,6 +138,8 @@ app.put('/api/movies/:id', (req, res) => {
     now,
     lastWatched,
     poster,
+    next.director ?? prev.director,  // Part B: Updated director
+    next.release_date ?? prev.release_date,  // Part B: Updated release_date
     id
   );
   const row = db.prepare('SELECT * FROM movies WHERE id = ?').get(id);
@@ -173,7 +180,9 @@ app.get('/api/tmdb/search', async (req, res) => {
       tmdb_id: m.id,
       title: m.title || m.original_title,
       year: (m.release_date || '').slice(0,4) || null,
-      poster_url: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null
+      poster_url: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
+      director: m.director || 'Unknown', // Part B: Added director from TMDB if available
+      release_date: m.release_date || null // Part B: Added release_date from TMDB if available
     }));
     res.json(results);
   } catch (e) {
@@ -200,12 +209,14 @@ app.post('/api/tmdb/add', async (req, res) => {
     const year = (m.release_date || '').slice(0,4) ? Number((m.release_date || '').slice(0,4)) : null;
     const genre = (m.genres || []).map(g => g.name).join(', ');
     const poster_url = m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null;
+    const director = m.credits?.crew?.find(crew => crew.job === 'Director')?.name || 'Unknown'; // Part B: Get director from TMDB
+    const release_date = m.release_date || null; // Part B: Get release_date from TMDB
 
     const now = new Date().toISOString();
     const info = db.prepare(`
-      INSERT INTO movies (tmdb_id, title, year, genre, rating, comment, watched, favorite, created_at, updated_at, last_watched_at, poster_url)
-      VALUES (?, ?, ?, ?, 0, '', ?, ?, ?, ?, ?, ?)
-    `).run(tmdb_id, title, year, genre, watched?1:0, favorite?1:0, now, now, watched? now : null, poster_url);
+      INSERT INTO movies (tmdb_id, title, year, genre, rating, comment, watched, favorite, created_at, updated_at, last_watched_at, poster_url, director, release_date)
+      VALUES (?, ?, ?, ?, 0, '', ?, ?, ?, ?, ?, ?, ?)
+    `).run(tmdb_id, title, year, genre, watched?1:0, favorite?1:0, now, now, watched? now : null, poster_url, director, release_date);
 
     const created = db.prepare('SELECT * FROM movies WHERE id = ?').get(info.lastInsertRowid);
     res.status(201).json(rowToMovie(created));
