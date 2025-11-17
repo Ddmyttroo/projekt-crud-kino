@@ -269,7 +269,9 @@ $('#save').onclick = async ()=>{
     rating: Number($('#fRating').value)||0,
     comment: $('#fComment').value.trim(),
     watched: $('#fWatched').checked,
-    poster_url: $('#fPoster').value.trim() || null
+    poster_url: $('#fPoster').value.trim() || null,
+    director: $('#fDirector').value.trim(),  // part b
+    release_date: $('#fReleaseDate').value.trim()  // part b
   };
   if (editing) await fetchJSON(`${API}/${editing.id}`, { method:'PUT', body: JSON.stringify(body) });
   else await fetchJSON(API, { method:'POST', body: JSON.stringify(body) });
@@ -278,55 +280,60 @@ $('#save').onclick = async ()=>{
 
 function heart(isFav){ return isFav ? '♥' : '♡'; }
 
-function drawList(items, target){
+function drawList(items, target) {
   target.innerHTML = '';
-  if (!items.length){ target.innerHTML = '<div class="empty">Нічого не знайдено</div>'; return; }
-  items.forEach(m=>{
-    const el = document.createElement('article'); el.className='movie'+(m.watched?' watched':'');
+  if (!items.length) { target.innerHTML = '<div class="empty">Нічого не знайдено</div>'; return; }
+  items.forEach(m => {
+    const el = document.createElement('article'); el.className = 'movie' + (m.watched ? ' watched' : '');
     const poster = m.poster_url || placeholder;
     el.innerHTML = `
       <img class="poster" src="${poster}" alt="poster">
       <div>
         <div class="title">${m.title}</div>
-        <div class="meta">🎥 ${[m.genre||'Без жанру', m.year||'—'].filter(Boolean).join(' • ')}</div>
+        <div class="meta">🎥 ${[m.genre || 'Без жанру', m.year || '—'].filter(Boolean).join(' • ')}</div>
         <div class="meta">${m.comment ? ('Коментар: ' + m.comment) : ''}</div>
-        ${m.genre ? '<div class="chip">'+m.genre+'</div>' : ''}
+        ${m.genre ? '<div class="chip">' + m.genre + '</div>' : ''}
+        <!-- Part B: Додаємо режисера -->
+        <div class="meta">Режисер: ${m.director || 'Невідомий'}</div> 
+        <!-- Part B: Додаємо дату виходу -->
+        <div class="meta">Дата виходу: ${m.release_date || 'Невідома'}</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <div class="stars" title="Оцінити">${starString(m.rating||0)}</div>
+        <div class="stars" title="Оцінити">${starString(m.rating || 0)}</div>
         <button class="btn" data-toggle>${m.watched ? '↩︎ В план' : '✔ Переглянуто'}</button>
         <button class="btn" data-edt>✎</button>
         <button class="btn" data-del>🗑</button>
-        <button class="heart ${m.favorite?'fav':''}" data-fav>${heart(m.favorite)}</button>
+        <button class="heart ${m.favorite ? 'fav' : ''}" data-fav>${heart(m.favorite)}</button>
       </div>`;
+    
     // delete
-    el.querySelector('[data-del]').onclick = async()=>{
-      if (confirm('Видалити?')){ await fetchJSON(`${API}/${m.id}`,{method:'DELETE'}); render(); loadFavs(); }
+    el.querySelector('[data-del]').onclick = async () => {
+      if (confirm('Видалити?')) { await fetchJSON(`${API}/${m.id}`, { method: 'DELETE' }); render(); loadFavs(); }
     };
     // edit
-    el.querySelector('[data-edt]').onclick = ()=> openModal(m);
+    el.querySelector('[data-edt]').onclick = () => openModal(m);
     // watched toggle
-    el.querySelector('[data-toggle]').onclick = async()=>{
+    el.querySelector('[data-toggle]').onclick = async () => {
       if (!m.watched) { openMini(m); }
       else {
-        await fetchJSON(`${API}/${m.id}`,{
-          method:'PUT', body: JSON.stringify({ watched:false })
+        await fetchJSON(`${API}/${m.id}`, {
+          method: 'PUT', body: JSON.stringify({ watched: false })
         });
         toast('Повернено у план'); render(); loadFavs();
       }
     };
     // rate
-    el.querySelector('.stars').onclick = async()=>{
-      const v = Number(prompt('Оцінка 0–5', m.rating||0));
-      if(Number.isFinite(v) && v>=0 && v<=5){
-        await fetchJSON(`${API}/${m.id}`,{ method:'PUT', body: JSON.stringify({ rating: Math.round(v) }) });
+    el.querySelector('.stars').onclick = async () => {
+      const v = Number(prompt('Оцінка 0–5', m.rating || 0));
+      if (Number.isFinite(v) && v >= 0 && v <= 5) {
+        await fetchJSON(`${API}/${m.id}`, { method: 'PUT', body: JSON.stringify({ rating: Math.round(v) }) });
         render();
       }
     };
     // favorite
-    el.querySelector('[data-fav]').onclick = async ()=>{
+    el.querySelector('[data-fav]').onclick = async () => {
       await fetchJSON(`${API}/${m.id}/favorite`, {
-        method:'PUT',
+        method: 'PUT',
         body: JSON.stringify({ favorite: !m.favorite })
       });
       render(); loadFavs();
@@ -334,7 +341,7 @@ function drawList(items, target){
     target.appendChild(el);
   });
 }
-
+  
 async function refreshSummary(){
   const all = await fetchJSON(API); // Завантажуємо ВСІ фільми для підрахунку
   const plans = all.filter(m=>!m.watched).length;
