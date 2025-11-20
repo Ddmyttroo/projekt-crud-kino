@@ -48,15 +48,68 @@ function migrate() {
     }
   }
 
-  // Додаємо колонку favorite, якщо її ще немає (без IF NOT EXISTS)
-  const cols = db.prepare('PRAGMA table_info(movies)').all();
-  const hasFavorite = cols.some(c => c.name === 'favorite');
+  // ====== Додаємо колонку favorite у movies (як було) ======
+  const movieCols = db.prepare('PRAGMA table_info(movies)').all();
+  const hasFavorite = movieCols.some(c => c.name === 'favorite');
 
   if (!hasFavorite) {
     db.exec('ALTER TABLE movies ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;');
     console.log('✔ added favorite column');
   } else {
     console.log('⏭ favorite already exists');
+  }
+
+  // ====== НОВЕ: user_id у movies ======
+  const hasUserIdInMovies = movieCols.some(c => c.name === 'user_id');
+  if (!hasUserIdInMovies) {
+    // user_id дозволяємо NULL, щоб старі записи лишалися валідними
+    db.exec('ALTER TABLE movies ADD COLUMN user_id INTEGER REFERENCES users(id);');
+    console.log('✔ added user_id column to movies');
+  } else {
+    console.log('⏭ user_id already exists in movies');
+  }
+
+  // ====== НОВЕ: nickname + is_admin у users ======
+  // Таблиця users вже має існувати з попередніх міграцій
+  let userCols = [];
+  try {
+    userCols = db.prepare('PRAGMA table_info(users)').all();
+  } catch (e) {
+    console.log('⚠ users table not found yet (maybe no auth migrations?)');
+    userCols = [];
+  }
+
+  if (userCols.length > 0) {
+    const hasNickname = userCols.some(c => c.name === 'nickname');
+    const hasIsAdmin  = userCols.some(c => c.name === 'is_admin');
+
+    if (!hasNickname) {
+      db.exec('ALTER TABLE users ADD COLUMN nickname TEXT;');
+      console.log('✔ added nickname column to users');
+    } else {
+      console.log('⏭ nickname already exists in users');
+    }
+
+    if (!hasIsAdmin) {
+      db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0;');
+      console.log('✔ added is_admin column to users');
+    } else {
+      console.log('⏭ is_admin already exists in users');
+    }
+
+    // Унікальний індекс по nickname (якщо ще немає)
+    try {
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname);');
+      console.log('✔ ensured unique index on users.nickname');
+    } catch (e) {
+      if (/already exists/i.test(e.message)) {
+        console.log('⏭ nickname index already exists');
+      } else {
+        throw e;
+      }
+    }
+  } else {
+    console.log('⚠ users table is missing, skipped nickname/is_admin migration');
   }
 
   console.log('✔ migrations done');

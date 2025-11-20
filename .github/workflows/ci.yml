@@ -1,0 +1,46 @@
+name: CI / CD – MOJE KINO
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  deploy_prod:
+    needs: build_and_test
+    runs-on: ubuntu-latest
+    if: success()
+
+    steps:
+      - name: Call deployment hook (Render / Heroku / Netlify)
+        run: |
+          if [ -n "${{ secrets.DEPLOY_HOOK_URL }}" ]; then
+            curl -X POST "${{ secrets.DEPLOY_HOOK_URL }}"
+          else
+            echo "DEPLOY_HOOK_URL not set, skipping real deploy"
+          fi
+
+      - name: Smoke test /health
+        run: |
+          if [ -n "${{ secrets.PROD_HEALTH_URL }}" ]; then
+            curl -f "${{ secrets.PROD_HEALTH_URL }}/health"
+          else
+            echo "PROD_HEALTH_URL not set, skipping smoke test"
+          fi

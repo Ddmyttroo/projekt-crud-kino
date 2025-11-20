@@ -7,14 +7,20 @@
     "dev": "node server.js",
     "migrate": "node db.js migrate",
     "seed": "node db.js seed",
-    "posters:fetch": "node tools/fetch-posters.js"
+    "posters:fetch": "node tools/fetch-posters.js",
+    "start": "node server.js",
+    "test": "node --test"
   },
   "dependencies": {
-    "express": "^4.19.2",
+    "bcrypt": "^5.1.1",
     "better-sqlite3": "^9.6.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "express": "^4.19.2",
     "node-fetch": "^3.3.2",
-    "zod": "^3.23.8",
-    "cors": "^2.8.5"
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.4"
   }
 }
