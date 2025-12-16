@@ -7,6 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
 import bcrypt from 'bcrypt';
+import crypto from 'node:crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -66,6 +67,22 @@ const LoginSchema = z.object({
   email: z.string().trim().min(3).max(200).email(),
   password: z.string().min(6).max(200)
 });
+
+const ForgotPasswordSchema = z.object({
+  email: z.string().trim().min(3).max(200).email()
+});
+
+const ResetPasswordSchema = z.object({
+  email: z.string().trim().min(3).max(200).email(),
+  token: z.string().trim().min(20).max(2000),
+  newPassword: z.string().min(6).max(200)
+});
+
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+function sha256Hex(s) {
+  return crypto.createHash('sha256').update(s).digest('hex');
+}
 
 // Demo auth: user id is read from the X-User-Id header.
 function getCurrentUser(req) {
@@ -810,6 +827,126 @@ app.post('/api/login', async (req, res) => {
           500,
           'Internal Server Error',
           'Wewnętrzny błąd serwera podczas logowania'
+        )
+      );
+  }
+});
+
+app.post('/api/auth/forgot-password', (req, res) => {
+  const parsed = ForgotPasswordSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res
+      .status(400)
+      .json(
+        makeError(
+          400,
+          'Bad Request',
+          'Niepoprawne dane',
+          zodToFieldErrors(parsed.error)
+        )
+      );
+  }
+
+  const { email } = parsed.data;
+  const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+
+  if (user) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = sha256Hex(token);
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS).toISOString();
+
+    try {
+      db.prepare(
+        'INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)'
+      ).run(user.id, tokenHash, expiresAt);
+
+      if (process.env.RETURN_RESET_TOKEN === 'true' || process.env.NODE_ENV === 'test') {
+        return res.json({ ok: true, resetToken: token, expiresAt });
+      }
+
+      console.log(`✔ password reset token for ${email}: ${token}`);
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  return res.json({
+    ok: true,
+    message: 'Jeśli konto istnieje, instrukcje resetu zostały wygenerowane'
+  });
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const parsed = ResetPasswordSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res
+        .status(400)
+        .json(
+          makeError(
+            400,
+            'Bad Request',
+            'Niepoprawne dane',
+            zodToFieldErrors(parsed.error)
+          )
+        );
+    }
+
+    const { email, token, newPassword } = parsed.data;
+    const user = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+    if (!user) {
+      return res
+        .status(400)
+        .json(makeError(400, 'Bad Request', 'Nieprawidłowy token lub email'));
+    }
+
+    const now = new Date().toISOString();
+    const tokenHash = sha256Hex(token);
+
+    const tokenRow = db
+      .prepare(
+        `
+        SELECT id
+        FROM password_reset_tokens
+        WHERE user_id = ?
+          AND token_hash = ?
+          AND used_at IS NULL
+          AND expires_at >= ?
+        LIMIT 1
+      `
+      )
+      .get(user.id, tokenHash, now);
+
+    if (!tokenRow) {
+      return res
+        .status(400)
+        .json(makeError(400, 'Bad Request', 'Nieprawidłowy lub wygasły token'));
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    db.transaction(() => {
+      db.prepare('UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?').run(
+        passwordHash,
+        now,
+        user.id
+      );
+      db.prepare('UPDATE password_reset_tokens SET used_at = ? WHERE id = ?').run(
+        now,
+        tokenRow.id
+      );
+    })();
+
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res
+      .status(500)
+      .json(
+        makeError(
+          500,
+          'Internal Server Error',
+          'Wewnętrzny błąd serwera podczas resetu hasła'
         )
       );
   }

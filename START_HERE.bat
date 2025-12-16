@@ -5,6 +5,8 @@ cd /d "%~dp0"
 set "LOG=%cd%\run_final.log"
 echo ==== START %date% %time% ==== > "%LOG%"
 
+set "RETURN_RESET_TOKEN=true"
+
 net session >nul 2>&1
 if errorlevel 1 (
   echo [ERROR] Please run this script AS ADMINISTRATOR. >> "%LOG%"

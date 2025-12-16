@@ -102,6 +102,65 @@ test('POST /api/register with duplicate email returns 409', async () => {
   assert.strictEqual(res.body.error, 'Conflict');
 });
 
+test('POST /api/auth/reset-password resets password and invalidates token', async () => {
+  const uniq = Date.now();
+  const email = `reset_${uniq}@example.com`;
+  const password = 'secret123';
+  const nickname = `reset_${uniq}`;
+
+  const reg = await request(app)
+    .post('/api/register')
+    .send({ email, password, nickname });
+  assert.strictEqual(reg.statusCode, 201);
+
+  process.env.NODE_ENV = 'test';
+
+  const forgot = await request(app)
+    .post('/api/auth/forgot-password')
+    .send({ email });
+  assert.strictEqual(forgot.statusCode, 200);
+  assert.ok(forgot.body);
+  assert.ok(forgot.body.resetToken);
+
+  const token = forgot.body.resetToken;
+  const newPassword = 'newsecret123';
+
+  const reset = await request(app)
+    .post('/api/auth/reset-password')
+    .send({ email, token, newPassword });
+  assert.strictEqual(reset.statusCode, 200);
+  assert.ok(reset.body);
+  assert.strictEqual(reset.body.ok, true);
+
+  const oldLogin = await request(app)
+    .post('/api/login')
+    .send({ email, password });
+  assert.strictEqual(oldLogin.statusCode, 401);
+
+  const newLogin = await request(app)
+    .post('/api/login')
+    .send({ email, password: newPassword });
+  assert.strictEqual(newLogin.statusCode, 200);
+  assert.ok(newLogin.body);
+  assert.strictEqual(newLogin.body.email, email);
+
+  const reuse = await request(app)
+    .post('/api/auth/reset-password')
+    .send({ email, token, newPassword: 'another123' });
+  assert.strictEqual(reuse.statusCode, 400);
+});
+
+test('POST /api/auth/forgot-password does not reveal account existence', async () => {
+  process.env.NODE_ENV = 'test';
+
+  const res = await request(app)
+    .post('/api/auth/forgot-password')
+    .send({ email: `nope_${Date.now()}@example.com` });
+  assert.strictEqual(res.statusCode, 200);
+  assert.ok(res.body);
+  assert.strictEqual(res.body.ok, true);
+});
+
 test('GET /health returns ok', async () => {
   const res = await request(app).get('/health');
   assert.strictEqual(res.statusCode, 200);

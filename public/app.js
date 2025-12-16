@@ -10,10 +10,16 @@ const authBtn         = $('#authBtn');
 const authTitle       = $('#authTitle');
 const authTabLogin    = $('#authTabLogin');
 const authTabRegister = $('#authTabRegister');
+const authTabReset    = $('#authTabReset');
 const authEmail       = $('#authEmail');
 const authNicknameRow = $('#authNicknameRow');
 const authNickname    = $('#authNickname');
+const authPasswordRow = $('#authPasswordRow');
 const authPassword    = $('#authPassword');
+const authResetTokenRow = $('#authResetTokenRow');
+const authResetToken    = $('#authResetToken');
+const authResetNewPasswordRow = $('#authResetNewPasswordRow');
+const authResetNewPassword    = $('#authResetNewPassword');
 const authCancelBtn   = $('#authCancel');
 const authSubmitBtn   = $('#authSubmit');
 
@@ -59,6 +65,15 @@ const I18N = {
     authToastLoggedIn: 'Вхід успішний ✅',
     authToastFill: 'Заповніть email і пароль',
     authToastPasswordShort: 'Пароль має бути мінімум 6 символів',
+    authResetTitle: 'Відновлення пароля',
+    authTabReset: 'Відновити',
+    authResetTokenLabel: 'Токен',
+    authResetNewPasswordLabel: 'Новий пароль',
+    authResetSubmitSendToken: 'Отримати токен',
+    authResetSubmitChangePassword: 'Змінити пароль',
+    authToastResetTokenSent: 'Токен згенеровано (див. консоль сервера)',
+    authToastResetPasswordDone: 'Пароль змінено ✅',
+    authErrorReset: 'Помилка відновлення пароля',
     authErrorRegister: 'Помилка реєстрації',
     authErrorLogin: 'Невірний email або пароль',
     authErrorNetwork: 'Помилка мережі',
@@ -105,6 +120,15 @@ const I18N = {
     authToastLoggedIn: 'Logowanie udane ✅',
     authToastFill: 'Wpisz email i hasło',
     authToastPasswordShort: 'Hasło musi mieć min. 6 znaków',
+    authResetTitle: 'Reset hasła',
+    authTabReset: 'Reset',
+    authResetTokenLabel: 'Token',
+    authResetNewPasswordLabel: 'Nowe hasło',
+    authResetSubmitSendToken: 'Pobierz token',
+    authResetSubmitChangePassword: 'Zmień hasło',
+    authToastResetTokenSent: 'Token wygenerowany (sprawdź konsolę serwera)',
+    authToastResetPasswordDone: 'Hasło zmienione ✅',
+    authErrorReset: 'Błąd resetu hasła',
     authErrorRegister: 'Błąd rejestracji',
     authErrorLogin: 'Nieprawidłowy email lub hasło',
     authErrorNetwork: 'Błąd sieci',
@@ -130,6 +154,28 @@ function toast(msg){
   setTimeout(() => t.classList.remove('show'), 1400);
 }
 
+function getUserId(){
+  return currentUser?.id || localStorage.getItem('userId');
+}
+
+function clearUiForLoggedOut(){
+  const d = dict();
+  if (todo) todo.innerHTML = `<div class="empty">${d.emptyList}</div>`;
+  if (done) done.innerHTML = `<div class="empty">${d.emptyList}</div>`;
+  if (favs) favs.innerHTML = `<div class="empty">${d.emptyList}</div>`;
+
+  const summary = document.getElementById('summary');
+  if (summary) summary.textContent = d.summary(0, 0);
+
+  if (tmdbBox){
+    tmdbBox.style.display = 'none';
+    tmdbBox.innerHTML = '';
+  }
+  if (tmdbTitleEl){
+    tmdbTitleEl.style.display = 'none';
+  }
+}
+
 function extractApiError(data, fallback){
   if (!data) return fallback;
   if (Array.isArray(data.fieldErrors) && data.fieldErrors.length){
@@ -148,7 +194,13 @@ async function fetchJSON(url, { method = 'GET', body } = {}){
   const headers = {};
   if (body) headers['Content-Type'] = 'application/json';
 
-  const uid = currentUser?.id || localStorage.getItem('userId');
+  const uid = getUserId();
+  if (!uid && url.startsWith('/api/')){
+    const msg = currentLang === 'pl' ? 'Najpierw zaloguj się' : 'Спочатку увійди в акаунт';
+    toast(msg);
+    openAuthModal('login');
+    throw new Error(msg);
+  }
   if (uid) headers['X-User-Id'] = uid;
 
   const r = await fetch(url, { method, headers, body });
@@ -207,26 +259,52 @@ function openAuthModal(mode = 'login'){
   authMode = mode;
   const d = dict();
 
+  const existingEmail = authEmail ? authEmail.value.trim() : '';
+
   if (authTitle){
     if (mode === 'login'){
       authTitle.textContent = d.authLoginTitle;
     } else {
-      authTitle.textContent = currentLang === 'pl' ? 'Rejestracja' : 'Реєстрація';
+      authTitle.textContent =
+        mode === 'register'
+          ? (currentLang === 'pl' ? 'Rejestracja' : 'Реєстрація')
+          : d.authResetTitle;
     }
   }
 
-  if (authTabLogin && authTabRegister){
-    authTabLogin.classList.toggle('primary', mode === 'login');
-    authTabRegister.classList.toggle('primary', mode === 'register');
+  if (authTabLogin) authTabLogin.classList.toggle('primary', mode === 'login');
+  if (authTabRegister) authTabRegister.classList.toggle('primary', mode === 'register');
+  if (authTabReset) authTabReset.classList.toggle('primary', mode === 'reset');
+
+  if (authPasswordRow){
+    authPasswordRow.style.display = mode === 'reset' ? 'none' : '';
   }
 
   if (authNicknameRow){
     authNicknameRow.style.display = mode === 'register' ? '' : 'none';
   }
 
-  if (authEmail)    authEmail.value = currentUser?.email || '';
+  if (authResetTokenRow){
+    authResetTokenRow.style.display = mode === 'reset' ? '' : 'none';
+  }
+  if (authResetNewPasswordRow){
+    authResetNewPasswordRow.style.display = mode === 'reset' ? '' : 'none';
+  }
+
+  if (authEmail)    authEmail.value = currentUser?.email || existingEmail || '';
+
   if (authPassword) authPassword.value = '';
   if (authNickname) authNickname.value = '';
+  if (authResetToken) authResetToken.value = '';
+  if (authResetNewPassword) authResetNewPassword.value = '';
+
+  if (authSubmitBtn){
+    if (mode === 'reset'){
+      authSubmitBtn.textContent = d.authResetSubmitSendToken;
+    } else {
+      authSubmitBtn.textContent = 'OK';
+    }
+  }
 
   if (authModal){
     authModal.classList.add('show');
@@ -274,12 +352,29 @@ function loadUserFromStorage(){
     currentUser = null;
   }
   updateAuthUI();
+  if (!currentUser){
+    clearUiForLoggedOut();
+  }
 }
 
-document.getElementById('addBtn').onclick = () => openModal();
+document.getElementById('addBtn').onclick = () => {
+  if (!getUserId()){
+    const msg = currentLang === 'pl' ? 'Najpierw zaloguj się' : 'Спочатку увійди в акаунт';
+    toast(msg);
+    openAuthModal('login');
+    return;
+  }
+  openModal();
+};
 document.getElementById('cancel').onclick = closeModal;
 
-document.getElementById('q').oninput = () => render();
+document.getElementById('q').oninput = () => {
+  if (!getUserId()){
+    openAuthModal('login');
+    return;
+  }
+  render();
+};
 
 document.getElementById('mwCancel').onclick = closeMini;
 
@@ -514,6 +609,11 @@ function drawList(items, target){
 
 async function refreshSummary(){
   const d = dict();
+  if (!getUserId()){
+    const summary = document.getElementById('summary');
+    if (summary) summary.textContent = d.summary(0, 0);
+    return;
+  }
   const all = await fetchJSON(API);
   const plans = all.filter(m => !m.watched).length;
   const seen  = all.filter(m =>  m.watched).length;
@@ -577,6 +677,12 @@ function drawTmdb(results){
 }
 
 async function searchTmdb(q){
+  if (!getUserId()){
+    tmdbBox.style.display = 'none';
+    tmdbTitleEl.style.display = 'none';
+    tmdbBox.innerHTML = '';
+    return;
+  }
   if (!q || q.length < 2){
     tmdbBox.style.display = 'none';
     tmdbTitleEl.style.display = 'none';
@@ -588,6 +694,10 @@ async function searchTmdb(q){
 }
 
 async function render(){
+  if (!getUserId()){
+    clearUiForLoggedOut();
+    return;
+  }
   const q = document.getElementById('q').value.trim();
   const allItems = await fetchJSON(API);
 
@@ -599,6 +709,10 @@ async function render(){
 }
 
 async function loadFavs(){
+  if (!getUserId()){
+    clearUiForLoggedOut();
+    return;
+  }
   const items = await fetchJSON(`${API}/favorites`);
   drawList(items, favs);
 }
@@ -618,8 +732,7 @@ if (authBtn){
       localStorage.removeItem('userNickname');
       updateAuthUI();
       toast(d.authToastLoggedOut);
-      render();
-      loadFavs();
+      clearUiForLoggedOut();
     } else {
       openAuthModal('login');
     }
@@ -633,12 +746,86 @@ if (authTabRegister){
   authTabRegister.onclick = () => openAuthModal('register');
 }
 
+if (authTabReset){
+  authTabReset.onclick = () => openAuthModal('reset');
+}
+
 if (authSubmitBtn){
   authSubmitBtn.onclick = async () => {
     const d = dict();
     const email = authEmail ? authEmail.value.trim() : '';
     const password = authPassword ? authPassword.value : '';
     const nickInput = authNickname;
+
+    if (authMode === 'reset'){
+      if (!email){
+        toast(currentLang === 'pl' ? 'Wpisz email' : 'Введіть email');
+        if (authEmail) authEmail.focus();
+        return;
+      }
+      if (authEmail && !authEmail.checkValidity()){
+        toast(currentLang === 'pl'
+          ? 'Niepoprawny adres email'
+          : 'Неправильний формат email'
+        );
+        authEmail.focus();
+        return;
+      }
+
+      const token = authResetToken ? authResetToken.value.trim() : '';
+      const newPassword = authResetNewPassword ? authResetNewPassword.value : '';
+
+      try{
+        if (!token){
+          const res = await fetch('/api/auth/forgot-password', {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json' },
+            body: JSON.stringify({ email })
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok){
+            toast(data?.message || d.authErrorReset);
+            return;
+          }
+
+          if (data?.resetToken && authResetToken){
+            authResetToken.value = data.resetToken;
+          }
+
+          toast(d.authToastResetTokenSent);
+          if (authResetToken) authResetToken.focus();
+          if (authSubmitBtn) authSubmitBtn.textContent = d.authResetSubmitChangePassword;
+          return;
+        }
+
+        if (newPassword.length < 6 || newPassword.length > 200){
+          toast(d.authToastPasswordShort);
+          if (authResetNewPassword) authResetNewPassword.focus();
+          return;
+        }
+
+        const res = await fetch('/api/auth/reset-password', {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json' },
+          body: JSON.stringify({ email, token, newPassword })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok){
+          toast(data?.message || d.authErrorReset);
+          return;
+        }
+
+        toast(d.authToastResetPasswordDone);
+        openAuthModal('login');
+        if (authEmail) authEmail.value = email;
+        if (authPassword) authPassword.focus();
+        return;
+      } catch (err){
+        console.error(err);
+        toast(d.authErrorNetwork);
+        return;
+      }
+    }
 
     if (!email || !password){
       toast(d.authToastFill);
@@ -788,7 +975,7 @@ function applyLang(){
     authTitleEl.textContent =
       authMode === 'register'
         ? (currentLang === 'pl' ? 'Rejestracja' : 'Реєстрація')
-        : d.authLoginTitle;
+        : (authMode === 'reset' ? d.authResetTitle : d.authLoginTitle);
   }
 
   const aEmailLabel = document.getElementById('authEmailLabel');
@@ -796,6 +983,12 @@ function applyLang(){
 
   const aPassLabel = document.getElementById('authPasswordLabel');
   if (aPassLabel) aPassLabel.textContent = d.authPasswordLabel;
+
+  const resetTokenLabel = document.getElementById('authResetTokenLabel');
+  if (resetTokenLabel) resetTokenLabel.textContent = d.authResetTokenLabel;
+
+  const resetNewPassLabel = document.getElementById('authResetNewPasswordLabel');
+  if (resetNewPassLabel) resetNewPassLabel.textContent = d.authResetNewPasswordLabel;
 
   const aNickLabel = document.getElementById('authNicknameLabel');
   if (aNickLabel) aNickLabel.textContent =
@@ -811,8 +1004,18 @@ function applyLang(){
   if (tabReg) tabReg.textContent =
     currentLang === 'pl' ? 'Rejestracja' : 'Реєстрація';
 
+  const tabReset = document.getElementById('authTabReset');
+  if (tabReset) tabReset.textContent = d.authTabReset;
+
   const submit = document.getElementById('authSubmit');
-  if (submit) submit.textContent = 'OK';
+  if (submit){
+    if (authMode === 'reset'){
+      const hasToken = !!(authResetToken && authResetToken.value.trim());
+      submit.textContent = hasToken ? d.authResetSubmitChangePassword : d.authResetSubmitSendToken;
+    } else {
+      submit.textContent = 'OK';
+    }
+  }
 
   const addBtn = document.getElementById('addBtn');
   if (addBtn) addBtn.textContent = d.btnAdd;
@@ -828,19 +1031,31 @@ document.getElementById('langUk').onclick = () => {
   currentLang = 'uk';
   localStorage.setItem('lang', 'uk');
   applyLang();
-  render();
-  loadFavs();
+  if (getUserId()){
+    render();
+    loadFavs();
+  } else {
+    clearUiForLoggedOut();
+  }
 };
 
 document.getElementById('langPl').onclick = () => {
   currentLang = 'pl';
   localStorage.setItem('lang', 'pl');
   applyLang();
-  render();
-  loadFavs();
+  if (getUserId()){
+    render();
+    loadFavs();
+  } else {
+    clearUiForLoggedOut();
+  }
 };
 
 loadUserFromStorage();
 applyLang();
-render();
-loadFavs();
+if (getUserId()){
+  render();
+  loadFavs();
+} else {
+  clearUiForLoggedOut();
+}
