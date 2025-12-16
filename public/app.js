@@ -788,11 +788,12 @@ if (authSubmitBtn){
             return;
           }
 
-          if (data?.resetToken && authResetToken){
+          const returned = !!data?.resetToken;
+          if (returned && authResetToken){
             authResetToken.value = data.resetToken;
           }
 
-          toast(d.authToastResetTokenSent);
+          toast(returned ? d.authToastResetTokenSent : (data?.message || d.authToastResetTokenSent));
           if (authResetToken) authResetToken.focus();
           if (authSubmitBtn) authSubmitBtn.textContent = d.authResetSubmitChangePassword;
           return;
