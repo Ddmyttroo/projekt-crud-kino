@@ -9,6 +9,11 @@ const DEFAULT_DB_PATH = path.join(__dirname, 'data', 'app.db');
 const DB_PATH = process.env.DB_PATH || DEFAULT_DB_PATH;
 const DATA_DIR = path.dirname(DB_PATH);
 
+const IS_RENDER = !!(process.env.RENDER || process.env.RENDER_SERVICE_ID);
+if (IS_RENDER) {
+  console.log(`✔ DB_PATH=${DB_PATH}`);
+}
+
 export function getDb(){
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   return new Database(DB_PATH);
