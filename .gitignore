@@ -12,3 +12,6 @@ data/*.db
 data/*.db-*
 *.db
 *.db-*
+
+# Local safety backups
+data_backup/
