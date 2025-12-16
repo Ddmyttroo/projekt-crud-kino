@@ -64,3 +64,4 @@ npm run dev
 1. Запусти `START_HERE.bat`
 2. Далі все зробиться автоматично (npm install → migrate → dev)
 3. Відкриється браузер з [http://localhost:8080](http://localhost:8080)
+=======
