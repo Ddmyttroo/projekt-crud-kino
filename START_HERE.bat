@@ -1,12 +1,10 @@
 @echo off
 setlocal ENABLEDELAYEDEXPANSION
-REM --- Always run from script folder ---
 cd /d "%~dp0"
 
 set "LOG=%cd%\run_final.log"
 echo ==== START %date% %time% ==== > "%LOG%"
 
-REM --- Require Admin for system-wide NVM/Node install ---
 net session >nul 2>&1
 if errorlevel 1 (
   echo [ERROR] Please run this script AS ADMINISTRATOR. >> "%LOG%"
@@ -34,7 +32,6 @@ if errorlevel 1 (
   )
 )
 
-REM --- Ensure NVM env in this session ---
 if not defined NVM_HOME (
   if exist "%ProgramFiles%\nvm\nvm.exe" set "NVM_HOME=%ProgramFiles%\nvm"
   if not defined NVM_SYMLINK set "NVM_SYMLINK=%ProgramFiles%\nodejs"
@@ -48,7 +45,6 @@ if not exist "%NVM_HOME%\nvm.exe" (
 set "PATH=%NVM_HOME%;%NVM_SYMLINK%;%PATH%"
 
 echo [INFO] Ensuring Node v20.18.0... >> "%LOG%"
-REM Install Node 20.18.0 if missing
 "%NVM_HOME%\nvm.exe" list 2>>"%LOG%" | findstr /i "20.18.0" >nul
 if errorlevel 1 (
   "%NVM_HOME%\nvm.exe" install 20.18.0 >> "%LOG%" 2>&1
@@ -77,7 +73,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-REM --- Make sure data folder exists (db will be created by migrations) ---
 if not exist "%cd%\data" mkdir "%cd%\data" >> "%LOG%" 2>&1
 
 echo [INFO] Running DB migrations... >> "%LOG%"
@@ -89,7 +84,6 @@ if errorlevel 1 (
   exit /b 1
 )
 
-REM --- Free port 8080 if busy (best-effort) ---
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":8080 .*LISTENING"') do (
   echo [INFO] Port 8080 busy by PID %%p, trying to terminate... >> "%LOG%"
   taskkill /PID %%p /F >> "%LOG%" 2>&1
@@ -98,7 +92,6 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":8080 .*LISTENING"') d
 echo [INFO] Starting server... >> "%LOG%"
 start "" /b cmd /c "node server.js >> "%LOG%" 2>&1"
 
-REM --- Wait a moment then open browser ---
 timeout /t 2 >nul
 start "" http://localhost:8080
 

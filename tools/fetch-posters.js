@@ -1,4 +1,3 @@
-// tools/fetch-posters.js
 import 'dotenv/config';
 import fetch from 'node-fetch';
 import { getDb } from '../db.js';
@@ -28,7 +27,6 @@ async function searchOne(title, year) {
   const list = Array.isArray(data.results) ? data.results : [];
   if (!list.length) return null;
 
-  // Спроба знайти збіг за роком; інакше беремо найпопулярніший
   let best = null;
   if (year) {
     best = list.find(m => (m.release_date || '').startsWith(String(year))) || null;
@@ -74,7 +72,6 @@ async function main(){
         console.log(`⚪ Not found: ${r.title}`);
         skipped++;
       }
-      // Маленька пауза, щоб не задушити TMDB
       await sleep(150);
     }catch(e){
       console.log(`⚠️ Помилка для "${r.title}": ${e.message}`);

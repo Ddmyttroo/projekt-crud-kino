@@ -13,11 +13,6 @@ export function getDb(){
   return new Database(DB_PATH);
 }
 
-function hasColumn(db, table, col){
-  const rows = db.prepare(`PRAGMA table_info(${table})`).all();
-  return rows.some(r => r.name === col);
-}
-
 function migrate() {
   const db = getDb();
   db.pragma('journal_mode = WAL');
@@ -26,10 +21,6 @@ function migrate() {
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
 
   for (const f of files) {
-    // 004_add_favorite.sql обробляємо окремо (див. нижче),
-    // щоб не ловити синтаксичну помилку "IF NOT EXISTS"
-    if (f.startsWith('004_add_favorite')) continue;
-
     const sql = fs.readFileSync(path.join(dir, f), 'utf8').trim();
     if (!sql) continue;
 
@@ -37,7 +28,6 @@ function migrate() {
       db.exec(sql);
       console.log('✔ applied', f);
     } catch (e) {
-      // Робимо міграції ідемпотентними
       if (/duplicate column/i.test(e.message)) {
         console.log('⏭ skipped', f, `(${e.message})`);
       } else if (/already exists/i.test(e.message)) {
@@ -48,7 +38,6 @@ function migrate() {
     }
   }
 
-  // ====== Додаємо колонку favorite у movies (як було) ======
   const movieCols = db.prepare('PRAGMA table_info(movies)').all();
   const hasFavorite = movieCols.some(c => c.name === 'favorite');
 
@@ -59,18 +48,24 @@ function migrate() {
     console.log('⏭ favorite already exists');
   }
 
-  // ====== НОВЕ: user_id у movies ======
   const hasUserIdInMovies = movieCols.some(c => c.name === 'user_id');
   if (!hasUserIdInMovies) {
-    // user_id дозволяємо NULL, щоб старі записи лишалися валідними
     db.exec('ALTER TABLE movies ADD COLUMN user_id INTEGER REFERENCES users(id);');
     console.log('✔ added user_id column to movies');
   } else {
     console.log('⏭ user_id already exists in movies');
   }
 
-  // ====== НОВЕ: nickname + is_admin у users ======
-  // Таблиця users вже має існувати з попередніх міграцій
+  // Ensure TMDB uniqueness per user.
+  try {
+    db.exec('DROP INDEX IF EXISTS uq_movies_tmdb;');
+    db.exec(
+      'CREATE UNIQUE INDEX IF NOT EXISTS uq_movies_user_tmdb ON movies(user_id, tmdb_id) WHERE user_id IS NOT NULL AND tmdb_id IS NOT NULL;'
+    );
+  } catch (e) {
+    if (!/already exists/i.test(e.message)) throw e;
+  }
+
   let userCols = [];
   try {
     userCols = db.prepare('PRAGMA table_info(users)').all();
@@ -96,8 +91,6 @@ function migrate() {
     } else {
       console.log('⏭ is_admin already exists in users');
     }
-
-    // Унікальний індекс по nickname (якщо ще немає)
     try {
       db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname);');
       console.log('✔ ensured unique index on users.nickname');
@@ -119,7 +112,6 @@ function migrate() {
 function seed(){
   const db = getDb();
 
-  // очищаємо таблицю і скидаємо AUTOINCREMENT
   db.exec(`DELETE FROM movies; VACUUM;`);
 
   const now = new Date().toISOString();
@@ -128,13 +120,10 @@ function seed(){
     VALUES (?,?,?,?,?,?,?,?,?,?,?)
   `);
 
-  // === ТВОЇ 55 НАЗВ (реалістичні роки/жанри, без постерів; TMDB підтягне) ===
   const rows = [
-    // watched приклади (2 шт):
     [null,'Пророк (Un prophète)', 2009,'Кримінал/Драма',       5,'Шедевр французького кіно', 1, now, now, now, null],
     [null,'Впіймай мене, якщо зможеш', 2002,'Біографія/Кримінал',5,'',                          1, now, now, now, null],
 
-    // у планах:
     [null,'Одного разу в Голлівуді',     2019,'Комедія/Драма',            0,'',0,now,now,null,null],
     [null,'Bullet Train',                2022,'Екшн/Комедія',             0,'',0,now,now,null,null],
     [null,'Союзники',                    2016,'Драма/Трилер/Війна',       0,'',0,now,now,null,null],

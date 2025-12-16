@@ -5,7 +5,6 @@ import app from '../server.js';
 
 let testUser = null;
 
-// Створюємо/памʼятаємо тестового юзера
 async function getTestUser() {
   if (testUser) return testUser;
 
@@ -29,7 +28,6 @@ async function getTestUser() {
   return testUser;
 }
 
-// Хелпер: повертає функції get/post/put/delete, які АВТОМАТИЧНО ставлять X-User-Id
 async function authed() {
   const user = await getTestUser();
   const withUser = (req) => req.set('X-User-Id', String(user.id));
@@ -43,11 +41,10 @@ async function authed() {
   };
 }
 
-// 1) POST /api/movies з некоректним payload → 400 Bad Request
 test('POST /api/movies with invalid payload returns 400', async () => {
   const { post } = await authed();
 
-  const res = await post('/api/movies').send({}); // немає title
+  const res = await post('/api/movies').send({});
 
   assert.strictEqual(res.statusCode, 400);
   assert.ok(res.body);
@@ -57,7 +54,6 @@ test('POST /api/movies with invalid payload returns 400', async () => {
   assert.ok(res.body.fieldErrors.length > 0);
 });
 
-// 2) POST /api/movies з рейтингом, але без watched → 422 Unprocessable Entity
 test('POST /api/movies with rating but not watched returns 422', async () => {
   const { post } = await authed();
 
@@ -65,8 +61,8 @@ test('POST /api/movies with rating but not watched returns 422', async () => {
     title: 'Test film',
     year: 2020,
     genre: 'Test',
-    rating: 4,      // є рейтинг
-    watched: false   // але не позначено переглянутим
+    rating: 4,
+    watched: false
   });
 
   assert.strictEqual(res.statusCode, 422);
@@ -78,7 +74,6 @@ test('POST /api/movies with rating but not watched returns 422', async () => {
   assert.ok(codeList.includes('RATING_WITHOUT_WATCHED'));
 });
 
-// 3) GET /api/movies/:id для неіснуючого ресурсу → 404
 test('GET /api/movies/:id for non-existing returns 404', async () => {
   const { get } = await authed();
 
@@ -90,14 +85,13 @@ test('GET /api/movies/:id for non-existing returns 404', async () => {
   assert.strictEqual(res.body.error, 'Not Found');
 });
 
-// 4) POST /api/register з дублікатом email → 409 Conflict
 test('POST /api/register with duplicate email returns 409', async () => {
   const user = await getTestUser();
 
   const res = await request(app)
     .post('/api/register')
     .send({
-      email: user.email,      // той самий email
+      email: user.email,
       password: 'secret123',
       nickname: 'someNick'
     });
@@ -108,7 +102,6 @@ test('POST /api/register with duplicate email returns 409', async () => {
   assert.strictEqual(res.body.error, 'Conflict');
 });
 
-// 5) /health → 200, простий smoke-test
 test('GET /health returns ok', async () => {
   const res = await request(app).get('/health');
   assert.strictEqual(res.statusCode, 200);

@@ -1,4 +1,3 @@
-// server.js v13 — movies per user + admin + nickname + backend validation + error format
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -19,8 +18,6 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const db = getDb();
-
-/* ===== ЕДИНИЙ ФОРМАТ ПОМИЛОК ===== */
 
 function makeError(status, error, message, fieldErrors = []) {
   return {
@@ -47,8 +44,6 @@ function zodToFieldErrors(zerr) {
   return list;
 }
 
-/* ===== СХЕМИ ===== */
-
 const MovieSchema = z.object({
   title: z.string().min(1).max(200),
   year: z.number().int().min(1888).max(2100).nullable().optional(),
@@ -61,7 +56,6 @@ const MovieSchema = z.object({
   tmdb_id: z.number().int().optional().nullable()
 });
 
-// логін/реєстрація
 const RegisterSchema = z.object({
   email: z.string().trim().min(3).max(200).email(),
   password: z.string().min(6).max(200),
@@ -73,9 +67,7 @@ const LoginSchema = z.object({
   password: z.string().min(6).max(200)
 });
 
-/* ===== УТИЛІТИ КОРИСТУВАЧА ===== */
-
-// Отримання поточного юзера з заголовка X-User-Id
+// Demo auth: user id is read from the X-User-Id header.
 function getCurrentUser(req) {
   const id = Number(req.headers['x-user-id']);
   if (!id) return null;
@@ -86,8 +78,7 @@ function getCurrentUser(req) {
   return user || null;
 }
 
-// Якщо ще немає admin — робимо першого користувача адміном
-// і привʼязуємо до нього ВСІ фільми без user_id
+// Ensure at least one admin and attach legacy movies without user_id.
 function ensureAdminForExistingData() {
   const admin = db.prepare('SELECT id FROM users WHERE is_admin = 1').get();
   if (admin) return;
@@ -107,7 +98,6 @@ function ensureAdminForExistingData() {
   );
 }
 
-// Гарантуємо нік для юзера, якщо він ще відсутній
 function ensureNicknameForUser(user) {
   if (user.nickname) return user;
 
@@ -127,10 +117,7 @@ function ensureNicknameForUser(user) {
   return { ...user, nickname: nick };
 }
 
-// Викликаємо один раз при старті сервера
 ensureAdminForExistingData();
-
-/* ===== HELPERS ДЛЯ MOVIES ===== */
 
 const rowToMovie = (r) => ({
   ...r,
@@ -138,8 +125,6 @@ const rowToMovie = (r) => ({
   favorite: !!r.favorite,
   rating: Number(r.rating ?? 0)
 });
-
-/* ===== MIDDLEWARE НА АВТОРИЗАЦІЮ (простий) ===== */
 
 function requireUser(req, res) {
   const user = getCurrentUser(req);
@@ -152,9 +137,6 @@ function requireUser(req, res) {
   return user;
 }
 
-/* ===== MOVIES API (привʼязані до user_id) ===== */
-
-// LIST
 app.get('/api/movies', (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -180,7 +162,6 @@ app.get('/api/movies', (req, res) => {
   res.json(rows.map(rowToMovie));
 });
 
-// RECENT — останні переглянуті
 app.get('/api/movies/recent', (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -199,7 +180,6 @@ app.get('/api/movies/recent', (req, res) => {
   res.json(rows.map(rowToMovie));
 });
 
-// FAVORITES
 app.get('/api/movies/favorites', (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -218,7 +198,6 @@ app.get('/api/movies/favorites', (req, res) => {
   res.json(rows.map(rowToMovie));
 });
 
-// ONE
 app.get('/api/movies/:id', (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -236,7 +215,6 @@ app.get('/api/movies/:id', (req, res) => {
   res.json(rowToMovie(row));
 });
 
-// CREATE
 app.post('/api/movies', (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -270,7 +248,7 @@ app.post('/api/movies', (req, res) => {
   const ratingInt = Number(rating ?? 0);
   const watchedBool = !!watched;
 
-  // Biznesowa reguła: nie można dać oceny, jeśli film nie jest obejrzany
+  // rating > 0 requires watched=true
   if (!watchedBool && ratingInt > 0) {
     return res
       .status(422)
@@ -334,7 +312,6 @@ app.post('/api/movies', (req, res) => {
   res.status(201).json(rowToMovie(created));
 });
 
-// UPDATE
 app.put('/api/movies/:id', (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -380,7 +357,7 @@ app.put('/api/movies/:id', (req, res) => {
   const favoriteInt = next.favorite ? 1 : 0;
   const ratingInt = Number(next.rating ?? prev.rating ?? 0);
 
-  // Biznesowa reguła
+  // rating > 0 requires watched=true
   if (!next.watched && ratingInt > 0) {
     return res
       .status(422)
@@ -443,7 +420,6 @@ app.put('/api/movies/:id', (req, res) => {
   res.json(rowToMovie(row));
 });
 
-// QUICK toggle favorite
 app.put('/api/movies/:id/favorite', (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -479,7 +455,6 @@ app.put('/api/movies/:id/favorite', (req, res) => {
   res.json(rowToMovie(row));
 });
 
-// DELETE
 app.delete('/api/movies/:id', (req, res) => {
   const user = requireUser(req, res);
   if (!user) return;
@@ -496,8 +471,6 @@ app.delete('/api/movies/:id', (req, res) => {
 
   res.status(204).send();
 });
-
-/* ===== TMDB ===== */
 
 app.get('/api/tmdb/search', async (req, res) => {
   try {
@@ -559,7 +532,7 @@ app.get('/api/tmdb/search', async (req, res) => {
   }
 });
 
-// TMDB ADD — додає фільм поточному користувачу
+// Add a movie from TMDB for the current user.
 app.post('/api/tmdb/add', async (req, res) => {
   try {
     const user = requireUser(req, res);
@@ -677,9 +650,6 @@ app.post('/api/tmdb/add', async (req, res) => {
   }
 });
 
-/* ===== АВТЕНТИФІКАЦІЯ з nickname ===== */
-
-// РЕЄСТРАЦІЯ
 app.post('/api/register', async (req, res) => {
   try {
     const parsed = RegisterSchema.safeParse(req.body);
@@ -750,7 +720,6 @@ app.post('/api/register', async (req, res) => {
       )
       .run(email, passwordHash, nickname);
 
-    // після реєстрації ще раз перевіримо admin
     ensureAdminForExistingData();
 
     const user = db
@@ -776,7 +745,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// ЛОГІН
 app.post('/api/login', async (req, res) => {
   try {
     const parsed = LoginSchema.safeParse(req.body);
@@ -824,10 +792,8 @@ app.post('/api/login', async (req, res) => {
         );
     }
 
-    // гарантуємо, що є хоча б один admin
     ensureAdminForExistingData();
 
-    // гарантуємо нік, якщо раніше його не було
     user = ensureNicknameForUser(user);
 
     return res.json({
@@ -849,17 +815,12 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-/* ===== ENDPOINT /health ДЛЯ SMOKE-TEST (CI/CD) ===== */
-
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
-/* ===== START ===== */
 const PORT = process.env.PORT || 8080;
 
-// запускаємо сервер ТІЛЬКИ якщо файл запущений напряму (node server.js),
-// а не коли його імпортує тест
+// Do not start the server when imported by tests.
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   app.listen(PORT, () => {
     console.log(`✔ API & Frontend: http://localhost:${PORT}`);

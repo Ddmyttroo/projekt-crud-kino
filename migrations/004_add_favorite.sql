@@ -1,2 +1,1 @@
--- handled in db.js for cross-version SQLite compatibility
-`
+SELECT 1;
