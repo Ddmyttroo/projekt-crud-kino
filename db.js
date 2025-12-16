@@ -5,8 +5,9 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, 'data');
-const DB_PATH = path.join(DATA_DIR, 'app.db');
+const DEFAULT_DB_PATH = path.join(__dirname, 'data', 'app.db');
+const DB_PATH = process.env.DB_PATH || DEFAULT_DB_PATH;
+const DATA_DIR = path.dirname(DB_PATH);
 
 export function getDb(){
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

@@ -3,12 +3,15 @@
   "version": "0.1.0",
   "description": "Personal movie tracker with TMDB integration (v11)",
   "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "node server.js",
     "migrate": "node db.js migrate",
     "seed": "node db.js seed",
     "posters:fetch": "node tools/fetch-posters.js",
-    "start": "node server.js",
+    "start": "node db.js migrate && node server.js",
     "test": "node --test"
   },
   "dependencies": {
