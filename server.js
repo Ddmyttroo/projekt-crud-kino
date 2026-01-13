@@ -20,6 +20,28 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 const db = getDb();
 
+function ensureMoviesDyrektorColumn() {
+  try {
+    const cols = db.prepare('PRAGMA table_info(movies)').all();
+    const has = cols.some((c) => c.name === 'dyrektor_67724');
+    if (has) return;
+
+    db.exec('ALTER TABLE movies ADD COLUMN dyrektor_67724 TEXT;');
+    console.log('✔ added dyrektor_67724 column to movies');
+  } catch (e) {
+    if (/duplicate column/i.test(String(e?.message || ''))) {
+      return;
+    }
+    // If movies table doesn't exist yet, ignore (migrations will create it).
+    if (/no such table/i.test(String(e?.message || ''))) {
+      return;
+    }
+    throw e;
+  }
+}
+
+ensureMoviesDyrektorColumn();
+
 function makeError(status, error, message, fieldErrors = []) {
   return {
     timestamp: new Date().toISOString(),
@@ -48,6 +70,7 @@ function zodToFieldErrors(zerr) {
 const MovieSchema = z.object({
   title: z.string().min(1).max(200),
   year: z.number().int().min(1888).max(2100).nullable().optional(),
+  dyrektor_67724: z.string().trim().max(200).optional().default(''),
   genre: z.string().trim().max(200).optional().default(''),
   rating: z.number().int().min(0).max(5).optional().default(0),
   comment: z.string().max(1000).optional().default(''),
@@ -253,6 +276,7 @@ app.post('/api/movies', (req, res) => {
   let {
     title,
     year = null,
+    dyrektor_67724,
     genre,
     rating,
     comment,
@@ -297,19 +321,20 @@ app.post('/api/movies', (req, res) => {
     .prepare(
       `
     INSERT INTO movies (
-      tmdb_id, title, year, genre,
+      tmdb_id, title, year, dyrektor_67724, genre,
       rating, comment,
       watched, favorite,
       created_at, updated_at, last_watched_at, poster_url,
       user_id
     )
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
   `
     )
     .run(
       tmdb_id,
       title,
       year,
+      dyrektor_67724,
       genre,
       ratingInt,
       comment,
@@ -410,7 +435,7 @@ app.put('/api/movies/:id', (req, res) => {
   db.prepare(
     `
     UPDATE movies
-    SET tmdb_id = ?, title = ?, year = ?, genre = ?, rating = ?, comment = ?,
+    SET tmdb_id = ?, title = ?, year = ?, dyrektor_67724 = ?, genre = ?, rating = ?, comment = ?,
         watched = ?, favorite = ?, updated_at = ?, last_watched_at = ?, poster_url = ?
     WHERE id = ? AND user_id = ?
   `
@@ -418,6 +443,7 @@ app.put('/api/movies/:id', (req, res) => {
     next.tmdb_id ?? prev.tmdb_id,
     next.title ?? prev.title,
     next.year === undefined ? prev.year : next.year,
+    next.dyrektor_67724 ?? prev.dyrektor_67724,
     next.genre ?? prev.genre,
     ratingInt,
     next.comment ?? prev.comment,
@@ -619,19 +645,20 @@ app.post('/api/tmdb/add', async (req, res) => {
       .prepare(
         `
       INSERT INTO movies (
-        tmdb_id, title, year, genre,
+        tmdb_id, title, year, dyrektor_67724, genre,
         rating, comment,
         watched, favorite,
         created_at, updated_at, last_watched_at, poster_url,
         user_id
       )
-      VALUES (?, ?, ?, ?, 0, '', ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, 0, '', ?, ?, ?, ?, ?, ?, ?)
     `
       )
       .run(
         tmdb_id,
         title,
         year,
+        '',
         genre,
         watchedInt,
         favoriteInt,

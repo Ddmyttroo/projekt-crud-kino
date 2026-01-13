@@ -1,0 +1,1 @@
+ALTER TABLE movies ADD COLUMN dyrektor_67724 TEXT;

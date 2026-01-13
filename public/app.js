@@ -227,6 +227,7 @@ function openModal(m = null){
   $('#mTitle').textContent = m ? d.modalEditTitle : d.modalAddTitle;
   $('#fTitle').value   = m?.title       ?? '';
   $('#fYear').value    = m?.year        ?? '';
+  $('#fDirector').value = m?.dyrektor_67724 ?? '';
   $('#fGenre').value   = m?.genre       ?? '';
   $('#fRating').value  = m?.rating      ?? 0;
   $('#fPoster').value  = m?.poster_url  ?? '';
@@ -235,6 +236,7 @@ function openModal(m = null){
   $('#modal').classList.add('show');
   document.body.style.overflow = 'hidden';
 }
+// 
 
 function closeModal(){
   $('#modal').classList.remove('show');
@@ -404,6 +406,7 @@ document.getElementById('save').onclick = async () => {
 
   const titleEl   = document.getElementById('fTitle');
   const yearEl    = document.getElementById('fYear');
+  const directorEl = document.getElementById('fDirector');
   const genreEl   = document.getElementById('fGenre');
   const ratingEl  = document.getElementById('fRating');
   const commentEl = document.getElementById('fComment');
@@ -412,6 +415,7 @@ document.getElementById('save').onclick = async () => {
 
   const title   = titleEl.value.trim();
   const yearStr = yearEl.value.trim();
+  const dyrektor_67724 = directorEl.value.trim();
   const genre   = genreEl.value.trim();
   const rating  = Number(ratingEl.value || 0);
   const comment = commentEl.value.trim();
@@ -460,6 +464,12 @@ document.getElementById('save').onclick = async () => {
     return;
   }
 
+  if (dyrektor_67724.length > 200){
+    toast('Reżyser nie może być dłuższy niż 200 znaków');
+    directorEl.focus();
+    return;
+  }
+
   let poster_url = null;
   if (poster){
     try{
@@ -486,6 +496,7 @@ document.getElementById('save').onclick = async () => {
   const body = {
     title,
     year,
+    dyrektor_67724,
     genre,
     rating,
     comment,
@@ -533,7 +544,7 @@ function drawList(items, target){
       <img class="poster" src="${poster}" alt="poster">
       <div>
         <div class="title">${m.title}</div>
-        <div class="meta">🎥 ${[m.genre || d.noGenre, m.year || '—'].filter(Boolean).join(' • ')}</div>
+        <div class="meta">🎥 ${[m.dyrektor_67724, m.genre || d.noGenre, m.year || '—'].filter(Boolean).join(' • ')}</div>
         ${m.genre ? '<div class="chip">'+m.genre+'</div>' : ''}
         <div class="meta">${m.comment ? (d.commentPrefix + m.comment) : ''}</div>
       </div>
