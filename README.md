@@ -1,67 +1,60 @@
-# МОЄ КІНО — CRUD (Part A, final)
+# MÓJ FILM — CRUD (część A, finalna)
 
-Проста веб-апка для персональної бази фільмів: план перегляду, переглянуті, улюблені, пошук, додавання з TMDB (з постером).
+Prosta aplikacja internetowa do osobistej bazy danych filmów: harmonogram oglądania, obejrzane, ulubione, wyszukiwanie, dodawanie z TMDB (z plakatem).
 
-## Вимоги
+## Wymagania
 - Node.js 20+
-- SQLite (вбудовано через better-sqlite3)
-- Інтернет для TMDB (опційно, якщо хочеш пошук/постери)
+- SQLite (wbudowany przez better-sqlite3)
+- Internet dla TMDB (opcjonalnie, jeśli chcesz wyszukiwać/publikować plakaty)
 
-## Налаштування
-Файл `.env` є локальним (не пушиться в GitHub). Створи його на основі `.env.example`.
+## Ustawienia
+Plik `.env` jest lokalny (nie jest przesyłany do GitHuba). Utwórz go na podstawie `.env.example`.
 
-Приклад вмісту:
+Przykładowa treść:
 ```
-TMDB_API_KEY=ВАШ_КЛЮЧ
+TMDB_API_KEY=YOUR_KEY
 PORT=8080
 
-# Dev-only: повертає reset token у відповідь /api/auth/forgot-password
-# (щоб не налаштовувати email-сервіс під час розробки)
+# Tylko w trybie deweloperskim: zwraca token resetu w odpowiedzi na /api/auth/forgot-password
+# (aby uniknąć konfigurowania usługi poczty e-mail podczas tworzenia)
 RETURN_RESET_TOKEN=true
 ```
 
-## Запуск локально
-Опційно можна засіяти БД демо-даними командою `npm run seed`.
+## Uruchom lokalnie
+Opcjonalnie możesz zasilić bazę danych danymi demonstracyjnymi za pomocą polecenia `npm run seed`.
 ```bash
 npm install
 npm run migrate
 npm run dev
 ```
-Відкрий: http://localhost:8080
+Otwórz: http://localhost:8080
 
-## Ендпойнти API
-- `GET /api/movies` — список (параметри: `q`, `watched=true|false`)
-- `GET /api/movies/:id` — деталі
-- `POST /api/movies` — створити
-- `PUT /api/movies/:id` — оновити
-- `DELETE /api/movies/:id` — видалити
+## Punkty końcowe API
+- `GET /api/movies` — lista (parametry: `q`, `watched=true|false`)
+- `GET /api/movies/:id` — szczegóły
+- `POST /api/movies` — utwórz
+- `PUT /api/movies/:id` — zaktualizuj
+- `DELETE /api/movies/:id` — usuń
 
-### Тіло `POST/PUT` (приклад)
+### `POST/PUT` Treść (przykład)
 ```json
 {
-  "title": "Inception",
-  "year": 2010,
-  "genre": "Sci-Fi/Thriller",
-  "rating": 5,
-  "comment": "Круто",
-  "watched": true,
-  "favorite": 1,
-  "poster_url": "https://image.tmdb.org/t/p/w500/....jpg",
-  "tmdb_id": 27205
+"title": "Incepcja",
+"year": 2010,
+"genre": "Science fiction/Thriller",
+"rating": 5,
+"comment": "Fajne",
+"watched": true,
+"favorite": 1,
+"poster_url": "https://image.tmdb.org/t/p/w500/....jpg",
+"tmdb_id": 27205
 }
 ```
 
-## TMDB інтеграція
-- `GET /api/tmdb/search?q=...` — пошук у TMDB (назва/рік/постер)
-- `POST /api/tmdb/add` — додати за `tmdb_id` (тіло: `{ "tmdb_id": 123, "watched": false }`)
+## Integracja z TMDB
+- `GET /api/tmdb/search?q=...` — wyszukiwanie w TMDB (tytuł/rok/plakat)
+- `POST /api/tmdb/add` — dodawanie według `tmdb_id` (body: `{ "tmdb_id": 123, "watched": false }`)
 
 ---
 
-Це готова збірка **Part A**.
-
-
-## 🚀 Швидкий запуск (Windows)
-1. Запусти `START_HERE.bat`
-2. Далі все зробиться автоматично (npm install → migrate → dev)
-3. Відкриється браузер з [http://localhost:8080](http://localhost:8080)
-=======
+To jest gotowa kompilacja **Części A**.
